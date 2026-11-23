@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema de Soporte Técnico</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 420px;
+            width: 100%;
+        }
+        .logo-sistema { text-align: center; margin-bottom: 20px; }
+        .logo-sistema img { width: 90px; height: 90px; margin-bottom: 10px; }
+        .login-card h2 { color: #333; font-weight: 700; margin-bottom: 5px; font-size: 1.5rem; }
+        .login-card .subtitle { color: #666; margin-bottom: 30px; font-size: 0.9rem; }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none; padding: 12px; font-weight: 600; width: 100%;
+            border-radius: 10px;
+        }
+        .btn-primary:hover { background: linear-gradient(135deg, #5a67d8 0%, #6b46a0 100%); }
+        .form-control { border-radius: 10px; padding: 12px 15px; }
+        .alert { display: none; border-radius: 10px; }
+        .info-admin {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="logo-sistema">
+            <img src="assets/logo-small.svg" alt="Logo Sistema">
+            <h2>Sistema de Soporte Técnico</h2>
+            <p class="subtitle">Fundación Gran Misión Saber y Trabajo</p>
+        </div>
+
+        <div class="info-admin">
+            <strong>🔑 Credenciales iniciales:</strong><br>
+            Usuario: <code>admin</code> | Contraseña: <code>123456</code>
+        </div>
+
+        <form id="loginForm">
+            <div class="alert alert-danger" id="errorAlert"></div>
+
+            <div class="mb-3">
+                <label for="username" class="form-label">👤 Usuario</label>
+                <input type="text" class="form-control" id="username"
+                       placeholder="Ingresa tu usuario" required autocomplete="username">
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">🔒 Contraseña</label>
+                <div class="input-group">
+                    <input type="password" class="form-control" id="password"
+                           placeholder="Ingresa tu contraseña" required autocomplete="current-password">
+                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">👁️</button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="loginBtn">🚀 Iniciar Sesión</button>
+        </form>
+    </div>
+
+    <script charset="UTF-8">
+        // Mostrar/ocultar contraseña
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const input = document.getElementById('password');
+            if (input.type === 'password') {
+                input.type = 'text'; this.textContent = '🙈';
+            } else {
+                input.type = 'password'; this.textContent = '👁️';
+            }
+        });
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorAlert = document.getElementById('errorAlert');
+            const loginBtn = document.getElementById('loginBtn');
+
+            loginBtn.innerHTML = '⏳ Iniciando sesión...';
+            loginBtn.disabled = true;
+            errorAlert.style.display = 'none';
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/auth/token/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('access_token', data.access);
+                    localStorage.setItem('refresh_token', data.refresh);
+
+                    const userResponse = await fetch('http://127.0.0.1:8000/api/usuarios/perfil/', {
+                        headers: { 'Authorization': `Bearer ${data.access}` }
+                    });
+                    const userData = await userResponse.json();
+                    localStorage.setItem('user_data', JSON.stringify(userData));
+
+                    if (userData.debe_cambiar_password) {
+                        alert('⚠️ Por seguridad, debes cambiar tu contraseña.');
+                        window.location.href = 'cambiar-password.html';
+                    } else {
+                        window.location.href = 'dashboard.html';
+                    }
+                } else {
+                    errorAlert.textContent = '❌ Usuario o contraseña incorrectos';
+                    errorAlert.style.display = 'block';
+                }
+            } catch (error) {
+                errorAlert.textContent = '❌ Error de conexión. ¿Está el servidor corriendo en el puerto 8000?';
+                errorAlert.style.display = 'block';
+            } finally {
+                loginBtn.innerHTML = '🚀 Iniciar Sesión';
+                loginBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
