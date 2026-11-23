@@ -42,12 +42,16 @@ class ActivoSerializer(serializers.ModelSerializer):
 
 class TicketSerializer(serializers.ModelSerializer):
     usuario_nombre = serializers.CharField(source='usuario.username', read_only=True)
-    tecnico_nombre = serializers.CharField(
-        source='tecnico_asignado.username', read_only=True, default=None
-    )
+    tecnico_nombre = serializers.SerializerMethodField()
     estado_display = serializers.CharField(source='get_estado_display', read_only=True)
     prioridad_display = serializers.CharField(source='get_prioridad_display', read_only=True)
     categoria_display = serializers.CharField(source='get_categoria_display', read_only=True)
+
+    def get_tecnico_nombre(self, obj):
+        tecnico = obj.tecnico_asignado
+        if not tecnico:
+            return None
+        return tecnico.get_full_name().strip() or tecnico.username
 
     class Meta:
         model = Ticket

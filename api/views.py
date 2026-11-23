@@ -4,8 +4,9 @@ from django.shortcuts import render
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Count, Avg, Q
+from django.db.models import Count, Avg, Q, Case, When, IntegerField, Value
 from django.db.models.functions import TruncDate
 from datetime import timedelta
 from django.utils import timezone
@@ -88,14 +89,52 @@ class UserViewSet(viewsets.ModelViewSet):
         })
 
 
+class TicketPagination(PageNumberPagination):
+    """25 por página por defecto; el cliente puede pedir ?page_size=25|50|100 (máximo 100)."""
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class BusquedaTicketFilter(filters.SearchFilter):
+    """Busca en título, descripción y nombres; si el texto es un número (o #número) también por ID."""
+
+    def filter_queryset(self, request, queryset, view):
+        termino = request.query_params.get(self.search_param, '').strip().lstrip('#')
+        encontrados = super().filter_queryset(request, queryset, view)
+        if termino.isdigit() and len(termino) < 10:
+            return (encontrados | queryset.filter(id=int(termino))).distinct()
+        return encontrados
+
+
+class OrdenEstableFilter(filters.OrderingFilter):
+    """Agrega -id como desempate: sin él, el orden entre filas iguales cambia entre páginas."""
+
+    def filter_queryset(self, request, queryset, view):
+        orden = self.get_ordering(request, queryset, view)
+        if not orden:
+            return queryset
+        if 'id' not in [campo.lstrip('-') for campo in orden]:
+            orden = list(orden) + ['-id']
+        return queryset.order_by(*orden)
+
+
 class TicketViewSet(viewsets.ModelViewSet):
     """API para gestión de tickets"""
     queryset = Ticket.objects.all()
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    pagination_class = TicketPagination
+    filter_backends = [DjangoFilterBackend, BusquedaTicketFilter, OrdenEstableFilter]
     filterset_fields = ['estado', 'prioridad', 'categoria']
-    search_fields = ['titulo', 'descripcion']
-    ordering_fields = ['fecha_creacion', 'prioridad']
+    search_fields = [
+        'titulo', 'descripcion', 'usuario__username',
+        'tecnico_asignado__username', 'tecnico_asignado__first_name', 'tecnico_asignado__last_name',
+    ]
+    # prioridad_orden ordena por gravedad (crítica primero), no alfabéticamente
+    ordering_fields = [
+        'id', 'fecha_creacion', 'categoria', 'estado', 'prioridad_orden',
+        'tecnico_asignado__first_name', 'tecnico_asignado__last_name', 'tecnico_asignado__username',
+    ]
     ordering = ['-fecha_creacion']
 
     def get_serializer_class(self):
@@ -104,7 +143,16 @@ class TicketViewSet(viewsets.ModelViewSet):
         return TicketSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().select_related('usuario', 'tecnico_asignado').annotate(
+            prioridad_orden=Case(
+                When(prioridad='critica', then=Value(0)),
+                When(prioridad='alta', then=Value(1)),
+                When(prioridad='media', then=Value(2)),
+                When(prioridad='baja', then=Value(3)),
+                default=Value(4),
+                output_field=IntegerField(),
+            )
+        )
         if self.request.user.role == 'admin':
             return queryset
         elif self.request.user.role == 'tecnico':
