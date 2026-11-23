@@ -42,3 +42,14 @@ Thumbs.db
 .idea/
 
 db.sqlite3
+
+# Instalación y ejecución local con el Python de Laragon
+.packages/
+.tools/
+.cache/
+.runtime/
+#Modificaciones deibis
+detener.bat
+iniciar.bat
+LEEME-LOCAL.txt
+scripts/local.ps1
