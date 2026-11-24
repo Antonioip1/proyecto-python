@@ -1,0 +1,49 @@
+Listado de tickets.
+    quien puede ver
+        Admin
+            ve todo
+
+        tecnico
+            Ve todos los tickets y el seguimiento.
+                Seguimiento es una vista que va a ir dentro del ticket, como indicando.
+                    usuario crea ticket.
+                        tecnico responde ticket
+                        usuario reponde ticket.
+                        tecnico responde ticket
+                            tecnico finaliza ticket
+                                usuario califca ticket
+
+
+        usurio final
+            solamente puede ver los ticket que el creo
+
+        
+
+dashobard
+     quien puede ver
+        Admin
+            todo el contenido
+        tecnico
+            solamente ve las metricas con sus ticket asignado
+        usurio final
+            solamente ve información de sus tickets.
+
+Activos.
+    Quien registra un activo.
+        admin y tecnico.
+    
+    quien puede eliminar
+        solamente admin
+
+    quien puede editar
+        admin tecnico.
+            seguimiento.
+
+Usuarios del sistema.
+    un admin puede crear un tecnico.
+    un tecnico puede crear un usuario final.
+    un tecnico no puede crear otro usuario tipo tecnico.
+    un usuario final no puede crear usuarios.
+
+
+        
